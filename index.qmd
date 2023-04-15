@@ -1,6 +1,6 @@
 ---
 title: "Homework 5"
-author: "[Insert your name here]{style='background-color: yellow;'}"
+author: "[Marc Hughes]{style='background-color: yellow;'}"
 toc: true
 title-block-banner: true
 title-block-style: default
@@ -8,8 +8,8 @@ execute:
   freeze: true
   cache: true
 format:
-  html: # comment this line to get pdf
-  # pdf: 
+  # html: # comment this line to get pdf
+  pdf: 
     fig-width: 7
     fig-height: 7
 ---
@@ -78,10 +78,14 @@ Read the data file as a tibble in R. Preprocess the data such that:
 2. all column names to lower case for consistency
 3. Any observations with missing values are dropped
 
-```R
+```{R}
 path <- "data/housing.csv"
 
-df <- ... # Insert your code here
+df <- read_csv(path)
+
+df <- df %>%
+  drop_na()
+
 ```
 
 ---
@@ -90,8 +94,12 @@ df <- ... # Insert your code here
 
 Visualize the correlation matrix of all numeric columns in `df` using `corrplot()`
 
-```R
-df %>% ... # Insert your code here
+```{R}
+df %>% 
+  # keeping only the numeric columns
+  keep(is.numeric) %>%
+  cor() %>%
+  corrplot(type = "upper", order = "hclust")
 ```
 
 ---
@@ -100,7 +108,7 @@ df %>% ... # Insert your code here
 
 Split the data `df` into `df_train` and `df_split` using `test_ind` in the code below:
 
-```R
+```{R}
 set.seed(42)
 test_ind <- sample(
   1:nrow(df), 
@@ -108,8 +116,8 @@ test_ind <- sample(
   replace=FALSE
 )
 
-df_train <- ... # Insert your code here
-df_test  <- ... # Insert your code here
+df_train <- df[-test_ind, ]
+df_test  <- df[test_ind, ]
 ```
 
 ---
@@ -129,9 +137,9 @@ Fit a linear regression model to predict the `median_house_value` :
 
 Interpret the coefficients and summarize your results. 
 
-```R
-lm_fit <- ... # Insert your code here
-... # Insert your code here
+```{R}
+lm_fit <- lm(median_house_value ~ ., df %>% select(-households))
+summary(lm_fit)
 ```
 
 ---
