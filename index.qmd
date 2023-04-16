@@ -218,14 +218,15 @@ NNet <- nn_module(
       self$sigmoid <- nn_sigmoid()
     },
     forward = function(x){
-      self$hidden1 %>%
-      self$activation %>%
-      self$hidden2 %>%
-      self$activation %>%
-      self$hidden3 %>%
-      self$activation %>%
-      self$output %>%
-      self$sigmoid
+      x %>%
+        self$hidden1() %>%
+        self$activation() %>%
+        self$hidden2() %>%
+        self$activation() %>%
+        self$hidden3() %>%
+        self$activation() %>%
+        self$output() %>%
+        self$sigmoid()
     }
 )
 ```
@@ -233,37 +234,54 @@ NNet <- nn_module(
 
 Fit a neural network model to predict the `median_house_value` using the same predictors as in 1.4. Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
-```R
+```{R}
+M <- model.matrix(median_house_value ~ 0 + ., data = df_train %>% select(-households))
+
 nnet_fit <- NNet %>% 
   setup(
-    ... # Insert your code here
+    loss = nn_mse_loss(),
+    optimizer = optim_adam,
+    metrics = list(
+      luz_metric_accuracy()
+    )
   ) %>%
   set_hparams(
-    ... # Insert your code here
+    p=ncol(M), q1 = 32, q2 = 16, q3 = 8
   ) %>%
-  set_opt_params(
-    ... # Insert your code here
+  set_opt_hparams(
+    lr = 0.0
   ) %>%
   fit(
-    ... # Insert your code here
-    dataloader_options = ... # Insert your code here
-    verbose = FALSE # Change to TRUE while tuning. But, set to FALSE before submitting
+    data = list(
+      model.matrix(median_house_value ~ 0 + ., data = df_train %>% select(-households)),
+      df_train %>% select(median_house_value) %>% as.matrix
+    ),
+    valid_data = list( 
+      model.matrix(median_house_value ~ 0 + ., data = df_test %>% select(-households)),
+      df_test %>% select(median_house_value) %>% as.matrix
+    ),
+    dataloader_options = NULL,
+    verbose = TRUE # Change to TRUE while tuning. But, set to FALSE before submitting
 
   )
 ```
 
 Plot the results of the training and validation loss and accuracy.
 
-```R
-... # Insert your code here
+```{R}
+plot(nnet_fit)
 ```
 
 
 Report the root mean squared error on the test set.
 
 
-```R
-nnet_predictions <- ... # Insert your code here
+```{R}
+nnet_predictions <- predict(nnet_fit, newdata = df_test)
+nnet_predictions <- nnet_predictions %>% as_array()
+
+nnet_rmse <- rmse(df_test$median_house_value, nnet_predictions)
+nnet_rmse
 ```
 
 ::: {.callout-warning}
@@ -276,8 +294,11 @@ Remember to use the `as_array()` function to convert the predictions to a vector
 
 Summarize your results in a table comparing the RMSE for the different models. Which model performed best? Why do you think that is?
 
-```R
-... # Insert your code here
+```{R}
+rmse_summaries <- data.frame(model_type = c("lm", "rpart"), 
+                             rmse = (c(lm_rmse, rpart_rmse)))
+rmse_summaries
+
 ```
 
 
@@ -304,8 +325,11 @@ Read the data file as a tibble in R. Preprocess the data such that:
 2. all column names to lower case for consistency
 3. Any observations with missing values are dropped
 
-```R
-df <- ... # Insert your code here
+```{R}
+df <- read_csv("C:/Users/marc_/OneDrive - The Pennsylvania State University/RStudio/STAT380-hw-5-MarcVHughes/data/spambase.csv")
+df <- df %>%
+  mutate(spam = as.factor(spam)) %>%
+  drop_na()
 ```
 
 ---
@@ -314,7 +338,7 @@ df <- ... # Insert your code here
 
 Split the data `df` into `df_train` and `df_split` using `test_ind` in the code below:
 
-```R
+```{R}
 set.seed(42)
 test_ind <- sample(
   1:nrow(df), 
@@ -322,22 +346,22 @@ test_ind <- sample(
   replace=FALSE
 )
 
-df_train <- ... # Insert your code here
-df_test  <- ... # Insert your code here
+df_train <- df[-test_ind, ]
+df_test  <- df[test_ind, ]
 ```
 
 Complete the `overview` function which returns a data frame with the following columns: `accuracy`, `error`, `false positive rate`, `true positive rate`, between the true `true_class` and the predicted `pred_class` for any classification model.
 
-```R
+```{R}
 overview <- function(pred_class, true_class) {
-  accuracy <- ... # Insert your code here
-  error <- ... # Insert your code here
-  true_positives <- ... # Insert your code here
-  true_negatives <- ... # Insert your code here
-  false_positives <- ... # Insert your code here
-  false_negatives <- ... # Insert your code here
-  true_positive_rate <- ... # Insert your code here
-  false_positive_rate <- ...  # Insert your code here
+  accuracy <- (tue_positives + true_negatives) / length(pred_class)
+  error <- 1-accuracy
+  true_positives <- sum(pred_class == 1 & true_class == 1)
+  true_negatives <- sum(pred_class == 0 & true_class == 0)
+  false_positives <- sum(pred_class == 1 & true_class == 0)
+  false_negatives <- sum(pred_class == 0 & true_class == 1)
+  true_positive_rate <- true_positives / (true_positives + false_negatives)
+  false_positive_rate <- false_positives / (false_positives + ture_negatives)
   return(
     data.frame(
       accuracy = accuracy,
