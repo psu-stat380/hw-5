@@ -138,9 +138,11 @@ Fit a linear regression model to predict the `median_house_value` :
 Interpret the coefficients and summarize your results. 
 
 ```{R}
-lm_fit <- lm(median_house_value ~ ., df %>% select(-households))
+lm_fit <- lm(median_house_value ~ ., df_train %>% select(-households))
 summary(lm_fit)
 ```
+
+Most of the p-values of the covariates are statistically significant with the ocean_proximity specifically 'NEAR OCEAN' being less significant than the other covariates, and the 'NEAR BAY' not being significant at all. As a result, we reject the null hypothesis and accept the alternative hypothesis. Because the 'ocean_proximity' variable is categorical, the variable is split into four subgroups each representing a different category type. 
 
 ---
 
@@ -148,12 +150,17 @@ summary(lm_fit)
 
 Complete the `rmse` function for computing the Root Mean-Squared Error between the true `y` and the predicted `yhat`, and use it to compute the RMSE for the regression model on `df_test`
 
-```R
+```{R}
 rmse <- function(y, yhat) {
   sqrt(mean((y - yhat)^2))
 }
 
-lm_predictions <- ... # Insert your code here
+# predicting using the model
+lm_predictions <- predict(lm_fit, newdata = df_test, type = "response")
+
+# calling the 'rmse()' function using the response variable and the predictions
+lm_rmse <- rmse(df_test$median_house_value, lm_predictions)
+lm_rmse
 ```
 
 
@@ -161,23 +168,26 @@ lm_predictions <- ... # Insert your code here
 
 Fit a decision tree model to predict the `median_house_value` using the same predictors as in 1.4. Use the `rpart()` function.
 
-```R
-rpart_fit <- ... # Insert your code here
-rpart_predictions <- ... # Insert your code here
+```{R}
+rpart_fit <- rpart(median_house_value ~ ., df_train %>% select(-households))
+rpart_predictions <- predict(rpart_fit, newdata = df_test)
 ```
 
 
 Visualize the decision tree using the `rpart.plot()` function. 
 
-```R
-... # Insert your code here
+```{R}
+rpart.plot(rpart_fit, tweak = 0.8)
 ```
 
 
 Report the root mean squared error on the test set.
 
-```R
-rpart_predictions <- ... # Insert your code here
+```{R}
+rpart_predictions <- predict(rpart_fit, newdata = df_test)
+
+rpart_rmse <- rmse(df_test$median_house_value, rpart_predictions)
+rpart_rmse
 ```
 
 ---
@@ -186,9 +196,9 @@ rpart_predictions <- ... # Insert your code here
 
 Fit a support vector machine model to predict the `median_house_value` using the same predictors as in 1.4. Use the `svm()` function and use any kernel of your choice. Report the root mean squared error on the test set.
 
-```R
-svm_fit <- ... # Insert your code here
-svm_predictions <- ... # Insert your code here
+```{R}
+svm_fit <- svm(median_house_value ~ ., df_train %>% select(-households), kernel = "radial")
+svm_predictions <- predict(svm_fit, newdata = df_test)
 ```
 
 ---
@@ -197,13 +207,25 @@ svm_predictions <- ... # Insert your code here
 
 Initialize a neural network model architecture:
 
-```R
+```{R}
 NNet <- nn_module(
     initialize = function(p, q1, q2, q3){
-      ... # Insert your code here
+      self$hidden1 <- nn_linear(p, q1)
+      self$hidden2 <- nn_linear(q1, q2)
+      self$hidden3 <- nn_linear(q2, q3)
+      self$output <- nn_linear(q3, 1)
+      self$activation <- nn_relu()
+      self$sigmoid <- nn_sigmoid()
     },
     forward = function(x){
-      ... # Insert your code here
+      self$hidden1 %>%
+      self$activation %>%
+      self$hidden2 %>%
+      self$activation %>%
+      self$hidden3 %>%
+      self$activation %>%
+      self$output %>%
+      self$sigmoid
     }
 )
 ```
