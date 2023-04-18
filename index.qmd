@@ -279,6 +279,7 @@ nnet_fit <- NNet %>%
       df_test %>% select(median_house_value) %>% as.matrix
     ),
     dataloader_options = list(batch_size = 1024, shuffle = TRUE),
+    epochs = 50,
     verbose = TRUE # Change to TRUE while tuning. But, set to FALSE before submitting
 
   )
@@ -496,22 +497,36 @@ Note that the neural network in **Q 1.9** was a regression model. You will need 
 
 Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
-```R
+```{R}
+# creating the covariate matrix
+M <- model.matrix(spam ~ 0 + ., df_train)
+
 # will have to use binary cross entropy loss
 nnet_fit <- NNet %>% 
   setup(
-    ... # Insert your code here
+    loss = nn_bce_loss(),
+    optimizer = optim_adam(),
+    metrics = list(
+      luz_metric_binary_accuracy()
+    )
   ) %>%
   set_hparams(
-    ... # Insert your code here
+    p=ncol(M), q1 = 32, q2 = 16, q3 = 8
   ) %>%
-  set_opt_params(
-    ... # Insert your code here
+  set_opt_hparams(
+    lr = 0.02
   ) %>%
   fit(
-    ... # Insert your code here
-    dataloader_options = ... # Insert your code here
-    verbose = FALSE # Change to TRUE while tuning. But, set to FALSE before submitting
+    data = list(
+      model.matrix(spam ~ 0 + ., data = df_train),
+      df_train %>% select(spam) %>% as.matrix
+    ),
+    valid_data = list( 
+      model.matrix(spam ~ 0 + ., df_train),
+      df_test %>% select(spam) %>% as.matrix
+    ),
+    dataloader_options = list(batch_size = 1024, shuffle = TRUE),
+    verbose = TRUE # Change to TRUE while tuning. But, set to FALSE before submitting
 
   )
 ```
@@ -611,9 +626,12 @@ plot(
 
 Define a grid of $100$ points from $-10$ to $10$ in both $x_1$ and $x_2$ using the `expand.grid()`. Save it as a tibble called `df_test`. 
 
-```R
-grid <- ... # Insert your code here
-df_test <- ... # Insert your code here
+```{R}
+# defining the grid
+grid <- expand.grid(x1 = seq(-10, 10, length.out = 100),
+                    x2 = seq(-10, 10, length.out = 100))
+# saving the grid as a tibble
+df_test <- as_tibble(grid)
 ```
 
 ---
@@ -622,14 +640,16 @@ df_test <- ... # Insert your code here
 
 Fit a classification tree model to predict the `y` variable using the `x1` and `x2` predictors, and plot the decision boundary. 
 
-```R
-rpart_fit <- ... # Insert your code here
-rpart_classes <- ... # Insert your code here
+```{R}
+# fitting the decision tree with response and specified predictors
+rpart_fit <- rpart(y ~ x1 + x2, df)
+# making predictions on the testing data
+rpart_classes <- predict(rpart_fit, newdata = df_test)
 ```
 
 Plot the decision boundary using the following function:
 
-```R
+```{R}
 plot_decision_boundary <- function(predictions){
   plot(
     df_test$x1, df_test$x2, 
@@ -644,7 +664,7 @@ plot_decision_boundary <- function(predictions){
 }
 ```
 
-```R
+```{R}
 plot_decision_boundary(rpart_classes)
 ```
 
@@ -654,9 +674,9 @@ plot_decision_boundary(rpart_classes)
 
 Fit a support vector machine model to predict the `y` variable using the `x1` and `x2` predictors. Use the `svm()` function and use any kernel of your choice. Remember to set the `type` argument to `"C-classification"` **if you haven't** converted `y` to be of type `factor`.
 
-```R
-svm_fit <- ... # Insert your code here
-svm_classes <- ... # Insert your code here
+```{R}
+svm_fit <- svm(y ~ x1 + x2, df, kernel = "radial", type = "C-classification")
+svm_classes <- predict(svm_fit, newdata = df_test)
 plot_decision_boundary(svm_classes)
 ```
 
