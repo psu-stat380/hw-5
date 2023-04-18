@@ -231,7 +231,6 @@ NNet <- nn_module(
       self$hidden3 <- nn_linear(q2, q3)
       self$output <- nn_linear(q3, 1)
       self$activation <- nn_relu()
-      self$sigmoid <- nn_sigmoid()
     },
     forward = function(x){
       # creating the forward function
@@ -242,8 +241,7 @@ NNet <- nn_module(
         self$activation() %>%
         self$hidden3() %>%
         self$activation() %>%
-        self$output() %>%
-        self$sigmoid()
+        self$output()
     }
 )
 ```
@@ -499,6 +497,7 @@ Note that the neural network in **Q 1.9** was a regression model. You will need 
 Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
 ```R
+# will have to use binary cross entropy loss
 nnet_fit <- NNet %>% 
   setup(
     ... # Insert your code here
