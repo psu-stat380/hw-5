@@ -81,8 +81,10 @@ Read the data file as a tibble in R. Preprocess the data such that:
 ```{R}
 path <- "data/housing.csv"
 
+# reading in the dataset
 df <- read_csv(path)
 
+# dropping all NA values
 df <- df %>%
   drop_na()
 
@@ -138,6 +140,7 @@ Fit a linear regression model to predict the `median_house_value` :
 Interpret the coefficients and summarize your results. 
 
 ```{R}
+# fitting the model and deselecting the 'households' variable
 lm_fit <- lm(median_house_value ~ ., df_train %>% select(-households))
 summary(lm_fit)
 ```
@@ -169,7 +172,9 @@ lm_rmse
 Fit a decision tree model to predict the `median_house_value` using the same predictors as in 1.4. Use the `rpart()` function.
 
 ```{R}
+# fitting the decision tree and deselecting the 'households' variable
 rpart_fit <- rpart(median_house_value ~ ., df_train %>% select(-households))
+# predicting the response values on the test data
 rpart_predictions <- predict(rpart_fit, newdata = df_test)
 ```
 
@@ -177,6 +182,7 @@ rpart_predictions <- predict(rpart_fit, newdata = df_test)
 Visualize the decision tree using the `rpart.plot()` function. 
 
 ```{R}
+# plotting the decision tree
 rpart.plot(rpart_fit)
 ```
 
@@ -186,6 +192,8 @@ Report the root mean squared error on the test set.
 ```{R}
 rpart_predictions <- predict(rpart_fit, newdata = df_test)
 
+# using the 'rmse()' function to find the root mean squared error
+# y = 'df_test$median_house_value' and yhat = 'rpart_predictions'
 rpart_rmse <- rmse(df_test$median_house_value, rpart_predictions)
 rpart_rmse
 ```
@@ -197,9 +205,12 @@ rpart_rmse
 Fit a support vector machine model to predict the `median_house_value` using the same predictors as in 1.4. Use the `svm()` function and use any kernel of your choice. Report the root mean squared error on the test set.
 
 ```{R}
+# fitting the svm, deselecting the 'households' variable, and selecting the kernel
 svm_fit <- svm(median_house_value ~ ., df_train %>% select(-households), kernel = "radial")
+# making predictions
 svm_predictions <- predict(svm_fit, newdata = df_test)
 
+# calculating the root mean squared error
 svm_rmse <- rmse(df_test$median_house_value, svm_predictions)
 svm_rmse
 ```
@@ -211,8 +222,10 @@ svm_rmse
 Initialize a neural network model architecture:
 
 ```{R}
+# creating the neural network
 NNet <- nn_module(
     initialize = function(p, q1, q2, q3){
+      # initializing the architecture
       self$hidden1 <- nn_linear(p, q1)
       self$hidden2 <- nn_linear(q1, q2)
       self$hidden3 <- nn_linear(q2, q3)
@@ -221,6 +234,7 @@ NNet <- nn_module(
       self$sigmoid <- nn_sigmoid()
     },
     forward = function(x){
+      # creating the forward function
       x %>%
         self$hidden1() %>%
         self$activation() %>%
@@ -238,8 +252,11 @@ NNet <- nn_module(
 Fit a neural network model to predict the `median_house_value` using the same predictors as in 1.4. Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
 ```{R}
+# creating the covariate matrix and deselecting the 'households' variable
+# doing '0 + .,' to un-include the response variable
 M <- model.matrix(median_house_value ~ 0 + ., data = df_train %>% select(-households))
 
+# fitting the neural network model
 nnet_fit <- NNet %>% 
   setup(
     loss = nn_mse_loss(),
@@ -272,6 +289,7 @@ nnet_fit <- NNet %>%
 Plot the results of the training and validation loss and accuracy.
 
 ```{R}
+# plotting the results
 plot(nnet_fit)
 ```
 
@@ -280,9 +298,11 @@ Report the root mean squared error on the test set.
 
 
 ```{R}
+# making predictions and converting into an array
 nnet_predictions <- predict(nnet_fit, newdata = df_test) 
 nnet_predictions <- nnet_predictions %>% as_array()
 
+# calculating the RMSE
 nnet_rmse <- rmse(df_test$median_house_value, nnet_predictions)
 nnet_rmse
 ```
@@ -299,6 +319,7 @@ Summarize your results in a table comparing the RMSE for the different models. W
 
 ```{R}
 # PUT THE REMAINING NNET IN HERE!!!!!!!!!!!!
+# creating the data frame of all the different models' rmse
 rmse_summary <- data.frame(model_type = c("lm", "rpart", "svm", "nnet"), 
                              rmse_value = (c(lm_rmse, rpart_rmse, svm_rmse, NA)))
 rmse_summary
@@ -330,7 +351,9 @@ Read the data file as a tibble in R. Preprocess the data such that:
 3. Any observations with missing values are dropped
 
 ```{R}
+# reading the csv
 df <- read_csv("data/spambase.csv")
+# converting 'spam' to a factor and dropping NA values
 df <- df %>%
   mutate(spam = as.factor(spam)) %>%
   drop_na()
@@ -350,6 +373,7 @@ test_ind <- sample(
   replace=FALSE
 )
 
+# splitting the data
 df_train <- df[-test_ind, ]
 df_test  <- df[test_ind, ]
 ```
@@ -385,12 +409,16 @@ overview <- function(pred_class, true_class) {
 Fit a logistic regression model to predict the `spam` variable using the remaining predictors. Report the prediction accuracy on the test set.
 
 ```{R, warning = FALSE}
+# fitting the logistic reg model using glm()
 glm_fit <- glm(spam ~ ., df_train, family = binomial())
 
+# making predictions
 glm_predictions <- predict(glm_fit, newdata = df_test)
 
+# converting the probabilities to a binary value
 glm_classes <- ifelse(glm_predictions > 0.5, 1, 0)
 
+# using the overview function to find the accuracy
 glm_overview <- overview(glm_classes, df_test$spam)
 
 print(paste("The prediction accuracy on the test set is", glm_overview$accuracy))
@@ -403,16 +431,20 @@ print(paste("The prediction accuracy on the test set is", glm_overview$accuracy)
 Fit a decision tree model to predict the `spam` variable using the remaining predictors. Use the `rpart()` function and set the `method` argument to `"class"`. 
 
 ```{R}
+# fitting the decision tree
 rpart_fit2 <- rpart(spam ~ ., df_train, method = "class")
 
+# making the porbability predictions
 rpart_probabilities <- predict(rpart_fit2, newdata = df_test)
 
+# converting the probabilities to binary vales
 rpart_classes <- ifelse(rpart_probabilities > 0.5, 1, 0)
 ```
 
 Visualize the decision tree using the `rpart.plot()` function. 
 
 ```{R}
+# plotting the decision tree
 rpart.plot(rpart_fit2)
 ```
 
@@ -436,14 +468,17 @@ Fit a support vector machine model to predict the `spam` variable using the rema
 
 
 ```{R}
+# fitting the svm model
 svm_fit <- svm(spam ~ ., df_train, kernel = "radial", type = "C-classification")
 ```
 
 Report the prediction accuracy on the test set.
 
 ```{R}
+# making the predictions
 svm_classes <- predict(svm_fit, newdata = df_test)
 
+# using the overview function to find the accuracy
 svm_overview <- overview(svm_classes, df_test$spam)
 
 print(paste("The prediction accuracy on the test set is", svm_overview$accuracy))
@@ -483,9 +518,13 @@ nnet_fit <- NNet %>%
 ```
 
 ```{R}
+# making predictions
 # nnet_classes <- predict(nnet_fit, newdata = df_test)
 
+# finding the test accuracy
 # nnet_overview <- overview(nnet_classes, df_test$spam)
+
+# print(paste("The accuracy on the test set is", nnet_overview$accuracy))
 ```
 
 
@@ -496,8 +535,9 @@ nnet_fit <- NNet %>%
 Summarize your results in a table comparing the accuracy metrics for the different models. 
 
 ```{R}
+# creating a data frame to display a summary of the accuracy
 accuracy_summary <- data.frame(model_type = c("glm", "rpart", "svm", "nnet"),
-accuracy_value = c(glm_overview$accuracy, rpart_overview$accuracy, svm_overview$accuracy, NA))
+                               accuracy_value = c(glm_overview$accuracy, rpart_overview$accuracy, svm_overview$accuracy, NA))
 
 accuracy_summary
 ```
