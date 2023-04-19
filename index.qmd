@@ -298,8 +298,7 @@ Report the root mean squared error on the test set.
 
 ```{R}
 # making predictions and converting into an array
-nnet_predictions <- predict(nnet_fit, newdata = df_test) 
-nnet_predictions <- nnet_predictions %>% as_array()
+nnet_predictions <- predict(nnet_fit, model.matrix(median_house_value ~ 0 + ., df_test %>% select(-households))) %>% as_array()
 
 # calculating the RMSE
 nnet_rmse <- rmse(df_test$median_house_value, nnet_predictions)
@@ -320,7 +319,7 @@ Summarize your results in a table comparing the RMSE for the different models. W
 # PUT THE REMAINING NNET IN HERE!!!!!!!!!!!!
 # creating the data frame of all the different models' rmse
 rmse_summary <- data.frame(model_type = c("lm", "rpart", "svm", "nnet"), 
-                             rmse_value = (c(lm_rmse, rpart_rmse, svm_rmse, NA)))
+                             rmse_value = (c(lm_rmse, rpart_rmse, svm_rmse, nnet_rmse)))
 rmse_summary
 
 ```
@@ -495,6 +494,33 @@ Using the same neural network architecture as in 1.9, fit a neural network model
 Note that the neural network in **Q 1.9** was a regression model. You will need to modify the neural network architecture to be a classification model by changing the output layer to have a single node with a sigmoid activation function.
 :::
 
+```{R}
+# creating the neural network
+NNet <- nn_module(
+    initialize = function(p, q1, q2, q3){
+      # initializing the architecture
+      self$hidden1 <- nn_linear(p, q1)
+      self$hidden2 <- nn_linear(q1, q2)
+      self$hidden3 <- nn_linear(q2, q3)
+      self$output <- nn_linear(q3, 1)
+      self$activation <- nn_relu()
+      self$sigmoid <- nn_sigmoid()
+    },
+    forward = function(x){
+      # creating the forward function
+      x %>%
+        self$hidden1() %>%
+        self$activation() %>%
+        self$hidden2() %>%
+        self$activation() %>%
+        self$hidden3() %>%
+        self$activation() %>%
+        self$output() %>%
+        self$sigmoid()
+    }
+)
+```
+
 Use the `model.matrix` function to create the covariate matrix and `luz` package for fitting the network with $32, 16, 8$ nodes in each of the three hidden layers. 
 
 ```{R}
@@ -505,27 +531,25 @@ M <- model.matrix(spam ~ 0 + ., df_train)
 nnet_fit <- NNet %>% 
   setup(
     loss = nn_bce_loss(),
-    optimizer = optim_adam(),
-    metrics = list(
-      luz_metric_binary_accuracy()
-    )
+    optimizer = optim_adam
   ) %>%
   set_hparams(
     p=ncol(M), q1 = 32, q2 = 16, q3 = 8
   ) %>%
   set_opt_hparams(
-    lr = 0.02
+    lr = 0.002
   ) %>%
   fit(
     data = list(
       model.matrix(spam ~ 0 + ., data = df_train),
-      df_train %>% select(spam) %>% as.matrix
+      (df_train[["spam"]] %>% as.numeric() - 1) %>% as.matrix
     ),
     valid_data = list( 
-      model.matrix(spam ~ 0 + ., df_train),
-      df_test %>% select(spam) %>% as.matrix
+      model.matrix(spam ~ 0 + ., data = df_test),
+      (df_test[["spam"]] %>% as.numeric() - 1) %>% as.matrix
     ),
     dataloader_options = list(batch_size = 1024, shuffle = TRUE),
+    epochs = 100,
     verbose = TRUE # Change to TRUE while tuning. But, set to FALSE before submitting
 
   )
@@ -533,12 +557,14 @@ nnet_fit <- NNet %>%
 
 ```{R}
 # making predictions
-# nnet_classes <- predict(nnet_fit, newdata = df_test)
+nnet_pred <- predict(nnet_fit, model.matrix(spam ~ 0 + ., df_test))
 
+nnet_classes <- ifelse(nnet_pred > 0.5, 1, 0)
+                  
 # finding the test accuracy
-# nnet_overview <- overview(nnet_classes, df_test$spam)
+nnet_overview <- overview(nnet_classes, df_test$spam)
 
-# print(paste("The accuracy on the test set is", nnet_overview$accuracy))
+print(paste("The accuracy on the test set is", nnet_overview$accuracy))
 ```
 
 
@@ -551,7 +577,7 @@ Summarize your results in a table comparing the accuracy metrics for the differe
 ```{R}
 # creating a data frame to display a summary of the accuracy
 accuracy_summary <- data.frame(model_type = c("glm", "rpart", "svm", "nnet"),
-                               accuracy_value = c(glm_overview$accuracy, rpart_overview$accuracy, svm_overview$accuracy, NA))
+                               accuracy_value = c(glm_overview$accuracy, rpart_overview$accuracy, svm_overview$accuracy, nnet_overview$accuracy))
 
 accuracy_summary
 ```
